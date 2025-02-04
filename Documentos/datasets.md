@@ -9,9 +9,9 @@ canción, devolviendo un feedback visual en función de si la respuesta era acer
 
 ## Info. adicional
 
-Peso total: 7.13GB;
-Los datos son guardados en formato .set;
-Enlace: https://openneuro.org/datasets/ds005876/versions/1.0.1
+Peso total: 7.13GB;  
+Los datos son guardados en formato .set;  
+Enlace: https://openneuro.org/datasets/ds005876/versions/1.0.1  
 
 # 2. 
 https://openneuro.org/datasets/ds005403/versions/1.0.1
