@@ -1,6 +1,6 @@
 # Datasets M/EEG
 
-# 1. (EEG) Song Familiarity (23/01/2025):
+# 1. (EEG) Song Familiarity:
 
 Este dataset es de los más recientes de todos. 29/30 sujetos en usa sesión de escucha de música de estilos variados. 
 La tarea de los participantes es identificar título, artista o letra de la canción. Estos contestaban en cuanto
@@ -33,7 +33,7 @@ Enlace: https://riuma.uma.es/xmlui/handle/10630/36947
 
 El dataset contiene grabaciones EEG de 24 sujetos durante sesiones de escucha de música junto con una serie de valoraciones
 subjetivas evaluadas del 1 al 9. Entre las valoraciones estan familiardad, "arousal" y nivel de interés. El principal problema
-que he visto es que la velocidad de descarga es baja y no he visto una manera facil de descargar todos los datos juntos. Hay varios
+que he visto es que la velocidad de descarga es baja y no he encontrado una manera facil de descargar todos los datos juntos. Hay varios
 datasets parecidos a estos de la misma fuente (Universidad Stanford), algunos no tan recientes: NMED-M (2021), NMED-RP (2018), 
 NMED-T (2017), NMED-H (2014 - 2016).
 
@@ -49,8 +49,7 @@ Enlace: https://purl.stanford.edu/pp371jh5722
 
 Se menciona anteriormente, viene también de la Universidad de Stanford y tiene datos similares al anterior. En este caso son 30 sujetos,
 escuchando otras 5 piezas distintas. En una escucha posterior, se pidió a los participantes que evaluen las piezas en base a diferentes
-factores como placentero, interesante, bien ordenado, etc. En este caso sí que hay un fichero comprimido .zip de todos los datos raw 
-medidos.
+factores como difrute, interés, etc. En este caso sí que hay un fichero comprimido .zip de todos los datos raw medidos.
 
 ## Info. adicional
 
@@ -75,9 +74,19 @@ Los datos son guardados en formato .mat;
 Al parecer la tasa de muestreo es bastante baja, 125 (Hz)  
 Enlace: https://github.com/AdamosDA/Music-EEG?tab=readme-ov-file
 
-# 6. (MEG) Tracking predictions in naturalistic music listening using MEG and computational models of music
+# 6. (M/EEG) Tracking predictions in naturalistic music listening using MEG and computational models of music
 
-Enlace: https://data.ru.nl/collections/di/dccn/DSC_3018045.02_116
+Este es de los pocos dataset reciente relacionado con la escucha de música que contiene datos MEG. Cuenta con 35 sujetos y un total de 19 
+canciones con duración media de 2 minutos. Los sujetos estaban sentados y podían elegir cuando empezará la canción a través de un botón. 
+También se les presento un punto fijo en la pantalla para evitar movimientos de la cabeza u oculares. 
+
+## Info. adicional
+
+Fecha: 08/06/2022 (Creado) - 10/01/2023 (Modificado);  
+Peso total: 333.3GB;  
+Los datos son guardados en formato .ds (CTF);  
+Solo para los datos MEG, cada sujeto ocupa casi 5GB;  
+Enlace: https://data.ru.nl/collections/di/dccn/DSC_3018045.02_116  
 
 
 # Otros enlaces:
