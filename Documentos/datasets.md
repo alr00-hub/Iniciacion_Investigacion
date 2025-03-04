@@ -1,20 +1,6 @@
 # Datasets M/EEG
 
-# 1. (EEG) Song Familiarity:
-
-Este dataset es de los más recientes de todos. 29/30 sujetos en usa sesión de escucha de música de estilos variados. 
-La tarea de los participantes es identificar título, artista o letra de la canción. Estos contestaban en cuanto
-la canción les resultaba familiar. Por último se les presentaba un cuestionario con 4 opciones de título para la 
-canción, devolviendo un feedback visual en función de si la respuesta era acertada o no.
-
-## Info. adicional
-
-Fecha: 23/01/2025;  
-Peso total: 7.13GB;  
-Los datos son guardados en formato .set;  
-Enlace: https://openneuro.org/datasets/ds005876/versions/1.0.1  
-
-# 2. (EEG) EEG Database for musical genres detection
+# 1. (EEG) EEG Database for musical genres detection
 
 Al igual que el anterior, su fecha de publicación es muy reciente. Consta de 6 sujetos, que escuchan 16 canciones de
 varios generos musicales. Las porciones escuchadas de las canciones se escogieron de manera arbitraria, teniendo en
@@ -28,6 +14,20 @@ Peso total: 4.5GB;
 Los datos son guardados en formato .eeg;  
 Pocos sujetos;  
 Enlace: https://riuma.uma.es/xmlui/handle/10630/36947
+
+# 2. (EEG) Music Listening- Genre EEG dataset
+
+Este es el que se uso en el TFG. Cuenta con 20 sujetos que han estado escuchando 12 canciones de distinto género y han dado 
+valoraciones de familiaridad y disfrute con notas del 1 al 5. Lo usaremos porque también sirve como una métrica de comparación adicional
+con los otros.
+
+## Info. adicional
+
+Fecha: 23/08/2021;  
+Peso total: 10.12GB;
+Los datos están en formato .set;  
+La calidad no es muy buena;  
+Enlace: https://openneuro.org/datasets/ds003774/versions/1.0.2;  
 
 # 3. (EEG) Naturalistic Music EEG Dataset - Elgar (NMED-E)
 
@@ -87,6 +87,17 @@ Peso total: 333.3GB;
 Los datos son guardados en formato .ds (CTF);  
 Solo para los datos MEG, cada sujeto ocupa casi 5GB;  
 Enlace: https://data.ru.nl/collections/di/dccn/DSC_3018045.02_116  
+
+# 7. (EEG) Cortical encoding of melodic expectations in human temporal cortex
+
+Un total de 20 sujetos, mitad son músicos, escuchando piezas de piano de Bach. 
+
+## Info. adicional
+
+Fecha: 22/01/2020;  
+Peso total: 5GB;  
+Los datos son guardados en formato .mat;  
+Enlace: https://datadryad.org/dataset/doi:10.5061/dryad.g1jwstqmh#citations;  
 
 
 # Otros enlaces:
