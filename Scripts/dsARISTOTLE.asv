@@ -1,4 +1,4 @@
-%% Script for dsARISTOTLE - Separate .set Files per Song
+%% Updated Script for dsARISTOTLE - Separate .set Files per Song
 
 %% Basic Setup
 clear; clc;
@@ -8,17 +8,18 @@ path_to_ds = 'D:\master\Iniciacion_Investigacion\Datasets\dsARISTOTLE\';
 file_base_name = 'music_listening_experiment_s';
 
 %% Process each subject
-for sub_idx = 1:n_subs
+for sub = 1:n_subs
     
     % Converting sub number to 2-digit string
-    subject_id = sprintf('%02d', sub_idx);
+    sub_id = sprintf('%02d', sub);
 
     % Load subject data
-    mat_file = [file_base_name subject_id '.mat'];
+    mat_file = [file_base_name sub];
     subject_data = load(fullfile(path_to_ds, mat_file));
     
-    % Create separate folder for each subject
-    subject_folder = fullfile(path_to_ds, ['sub-' subject_id]);
+    % Extract subject ID from filename
+    [~, subject_id, ~] = fileparts(mat_file);
+    subject_folder = fullfile(path_to_ds, subject_id);
     if ~exist(subject_folder, 'dir')
         mkdir(subject_folder);
     end
@@ -42,31 +43,23 @@ for sub_idx = 1:n_subs
     %% Save each song separately as a .set file
     for song_idx = 1:n_songs
         
-        % Create separate folder for each song
-        song_folder = fullfile(subject_folder, ['ses-' num2str(song_idx, '%02d')]);
-        if ~exist(song_folder, 'dir')
-            mkdir(song_folder);
-        end
-        
         % Extract EEG data for the song
         EEG_song = squeeze(EEG_Songs(song_idx, :, :));
         
         % Create EEG structure
         EEG = pop_importdata('dataformat', 'matlab', 'nbchan', n_channels, 'data', EEG_song, ...
-            'chanlocs', chanlocs, 'setname', ['sub-' subject_id 'ses-' num2str(song_idx)], ...
-            'srate', Fs, 'pnts', size(EEG_song, 2), 'xmin', 0);
+            'chanlocs', chanlocs, 'setname', ['Subject_' subject_id '_Song' num2str(song_idx)], 'srate', Fs, 'pnts', 0, 'xmin', 0);
         
         % Add event marker with song rating
         EEG.event = struct();
-        EEG.event(1).type = ['ses:' num2str(song_idx) '/rating:' num2str(song_ratings(song_idx))];
+        EEG.event(1).type = ['song:' num2str(song_idx) '/rating:' num2str(song_ratings(song_idx))];
         EEG.event(1).latency = 1; % Mark event at the beginning
         EEG = eeg_checkset(EEG);
-
         
         % Save .set file
-        output_filename = ['sub-' subject_id '-ses' num2str(song_idx) '.set'];
-        pop_saveset(EEG, 'filename', output_filename, 'filepath', song_folder);
+        output_filename = ['Subject_' subject_id '_Song' num2str(song_idx) '.set'];
+        pop_saveset(EEG, 'filename', output_filename, 'filepath', subject_folder);
     end
     
-    fprintf('Conversion completed for %s\n', subject_id);
+    fprintf('Finished processing %s\n', subject_id);
 end
