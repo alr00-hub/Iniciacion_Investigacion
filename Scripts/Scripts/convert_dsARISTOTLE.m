@@ -62,7 +62,7 @@ for sub_idx = 1:n_subs
         EEG.event(1).latency = 1; % Mark event at the beginning
         EEG = eeg_checkset(EEG);
 
-        
+           
         % Save .set file
         output_filename = ['sub-' subject_id '-ses' num2str(song_idx) '.set'];
         pop_saveset(EEG, 'filename', output_filename, 'filepath', song_folder);
