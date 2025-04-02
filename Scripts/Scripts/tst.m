@@ -1,11 +1,11 @@
 %% Script to assess quality of dsDRYAD dataset
 
 %clear; clc;
-n_songs = 10; % Number of unique songs
-n_subs = 20;   % Number of subjects
-path_to_ds = 'D:\master\Iniciacion_Investigacion\Datasets\dsDRYAD\diliBach_4dryad_CND\diliBach_4dryad_CND';
+n_songs = 12; % Number of unique songs
+n_subs = 4;   % Number of subjects
+path_to_ds = 'D:\master\Iniciacion_Investigacion\Datasets\ds003774';
 sub_base_name = 'sub-';
-song_base_name = 'song-';
+song_base_name = 'ses-';
 
 usable_songs_per_subject = zeros(n_subs, 1);
 all_bad_channels = []; % Store all bad channels for summary
@@ -13,17 +13,18 @@ all_bad_channels = []; % Store all bad channels for summary
 %% Loop through subjects
 for sub_idx = 1:n_subs
     display(['Processing subject ' num2str(sub_idx)]);
-    subject_str = [sub_base_name num2str(sub_idx)];
+    subject_str = [sub_base_name num2str(sub_idx, '%03d')];
     usable_songs = 0;
     figure;
     %% Loop through songs
     for song_idx = 1:n_songs
         display(['Processing song ' num2str(song_idx)]);
-        song_str = [song_base_name num2str(song_idx)];
+        song_str = [song_base_name num2str(song_idx, '%02d')];
         
         %% Build path and file names
-        filename = [subject_str '_' song_str '.set'];
-        filepath = [path_to_ds '\' subject_str '\' song_str];
+
+        filename = [subject_str '_' song_str '_task-MusicListening_run-' num2str(song_idx) '_eeg.set'];
+        filepath = [path_to_ds '\' subject_str '\' song_str '\eeg'];
 
         %% Load the data from EEGLAB file (.set)
         EEG = pop_loadset('filename', filename, 'filepath', filepath);
@@ -69,7 +70,7 @@ for sub_idx = 1:n_subs
         neighbor_matrix = distances <= neighbour_threshold; % Neighbour mask (0 or 1)
 
         % Compute the average over the 3 trials
-        data_avg = squeeze(mean(EEG.data, 3));
+        data_avg = EEG.data(:, :);
         %data_avg = EEG.data(:, :, 1);
 
         % Ciretia 1: Detect flat channels (low standard deviation)
@@ -119,7 +120,7 @@ for sub_idx = 1:n_subs
         removed_mask(bad_channels) = 1;  % Mark the bad channels
 
         % Subplot to create a single summary figure per subject
-        subplot(2, 5, song_idx);
+        subplot(2, 6, song_idx);
         topoplot(removed_mask, EEG.chanlocs, 'style', 'blank', 'electrodes', 'on');
         title(['Song ' num2str(song_idx)], 'Position', [0, 0.5, 1]);
 

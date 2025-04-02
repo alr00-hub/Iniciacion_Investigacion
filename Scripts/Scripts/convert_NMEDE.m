@@ -1,11 +1,12 @@
 %% Basic Setup
 clear; clc;
-n_trials = 1; % Each song appears 1 time
-n_songs = 2; % 2 unique songs, original and modified
-n_subs = 1; % Number of subjects
+
+n_songs = 2; % 1 song but 2 variants
+n_subs = 24; % Number of subjects
 n_channels = 129;
 path_to_ds = 'D:\master\GlobusPC\NMED-E'; % Directory of the dataset
 file_base_name = 'RawEEG_S'; % Base name for the subject files
+spf_file = 'GSN129.sfp'; % Chanlocs File
 
 %% Process each subject
 for sub_idx = 1:n_subs
@@ -56,8 +57,9 @@ for sub_idx = 1:n_subs
 
     end
 
+    chanlocs = readlocs(fullfile(path_to_ds, spf_file));
     EEG = pop_importdata('dataformat', 'array', 'nbchan', n_channels, 'data', EEG_Data, ...
-            'setname', ['sub-' subject_id], ...
+            'chanlocs', chanlocs, 'setname', ['sub-' subject_id], ...
             'srate', Fs, 'pnts', size(EEG_Data, 2), 'xmin', 0);
 
     EEG.event = [];
