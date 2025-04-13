@@ -43,35 +43,53 @@ for sub_idx = 1:n_subs
         song_start_idx = song_start_idx(song_idx);
         song_end_idx = find(allTriggers == (11 + song_idx));
         
-
+        % Find the onset times for baseline and ratings trial
         precise_onset_arr = find(allTriggers == 128 & allOnsets > allOnsets(song_start_idx));
-        precise_onset_baseline = allOnsets(precise_onset_arr(1)) - 1000;
-        precise_onset_song = allOnsets(precise_onset_arr(2)) - 1000;
+        precise_onset_baseline = allOnsets(precise_onset_arr(1)) - 1000; % Baseline trial onset (with offset)
+        precise_onset_song = allOnsets(precise_onset_arr(2)) - 1000;     % Song trial onset (with offset)
+        
+        % Set up the latencies for the events
+        event_latencies = [precise_onset_baseline, precise_onset_song];
+        event_types = {sprintf("Baseline Trial %d", song_idx), sprintf("Trial %d", song_idx)};
 
-        event_latencies = [event_latencies, precise_onset_baseline];
-        event_latencies = [event_latencies, precise_onset_song];
-        event_latencies = [event_latencies, allOnsets(song_end_idx)];
-        event_types = [event_types, {sprintf("Baseline Trial %d", song_idx)}];
-        event_types = [event_types, {sprintf("Trial %d", song_idx)}];
+        % Find the onset time for Ratings Trial start (event 11 + song_idx)
+        ratings_start_idx = find(allTriggers == (11 + song_idx));
+        ratings_start_onset = allOnsets(ratings_start_idx);
+        event_latencies = [event_latencies, ratings_start_onset];
         event_types = [event_types, {sprintf("Ratings Trial %d", song_idx)}];
 
-    end
+        % Create EEG struct for each song (with only relevant data)
+        chanlocs = readlocs(fullfile(path_to_ds, spf_file));
+        EEG = pop_importdata('dataformat', 'array', 'nbchan', n_channels, 'data', EEG_Data, ...
+                'chanlocs', chanlocs, 'setname', ['sub-' subject_id '_song_' num2str(song_idx)], ...
+                'srate', Fs, 'pnts', size(EEG_Data, 2), 'xmin', 0);
 
-    chanlocs = readlocs(fullfile(path_to_ds, spf_file));
-    EEG = pop_importdata('dataformat', 'array', 'nbchan', n_channels, 'data', EEG_Data, ...
-            'chanlocs', chanlocs, 'setname', ['sub-' subject_id], ...
-            'srate', Fs, 'pnts', size(EEG_Data, 2), 'xmin', 0);
-
-    EEG.event = [];
-    
-    for i = 1:length(event_latencies)
-        EEG.event(i).type = event_types{i};
-        EEG.event(i).latency = event_latencies(i);
-        EEG.event(i).epoch = 1;
-        EEG.epoch(i).event = i;
+        % Filter EEG data for the selected time range
+        % Select data from baseline trial start to ratings trial start
+        data_start_idx = find(EEG.times >= precise_onset_baseline, 1, 'first');
+        data_end_idx = find(EEG.times >= ratings_start_onset, 1, 'first');
+        
+        EEG.data = EEG.data(:, data_start_idx:data_end_idx); % Crop EEG data to the desired segment
+        EEG.times = EEG.times(data_start_idx:data_end_idx);  % Adjust the times accordingly
+        
+        % Create the event structure for this segment of data
+        EEG.event = [];
+        for i = 1:length(event_latencies)
+            event_idx = find(EEG.times >= event_latencies(i), 1, 'first');
+            EEG.event(i).type = event_types{i};
+            EEG.event(i).latency = event_idx;
+            EEG.event(i).epoch = 1;
+            EEG.epoch(i).event = i;
+        end
+        
+        EEG = eeg_checkset(EEG);  % Ensure EEG is valid
+        
+        % Save the EEG data for the specific song and segment
+        output_filename = ['sub-' subject_id '_song_' num2str(song_idx) '.set'];
+        pop_saveset(EEG, 'filename', output_filename, 'filepath', subject_folder); % Save .set file
+        
+        % Clear event latencies and event types for the next song
+        event_latencies = [];
+        event_types = {};
     end
-  
-    EEG = eeg_checkset(EEG);  % Ensure EEG is valid
-    output_filename = ['sub-' subject_id '.set'];
-    pop_saveset(EEG, 'filename', output_filename, 'filepath', subject_folder); % Save .set file
 end
