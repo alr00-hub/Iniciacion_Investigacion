@@ -4,14 +4,14 @@ addpath(genpath('D:\eeglab\eeglab_current\eeglab2024.2\plugins\clean_rawdata2.10
 
 % General Parameters
 n_songs = 10;
-n_subjects = 3;
+n_subjects = 5;
 path_to_ds = 'D:\master\Iniciacion_Investigacion\Datasets\dsDRYAD\diliBach_4dryad_CND\diliBach_4dryad_CND';
 sub_base = 'sub-';
 song_base = 'song-';
 usable_songs_per_subject = zeros(n_subjects, 1);
 
 %% Loop through subjects
-for sub_idx = 3:n_subjects
+for sub_idx = 5:n_subjects
     disp(['Processing subject ' num2str(sub_idx)]);
     subject_str = [sub_base num2str(sub_idx)];
     usable_songs = 0;
@@ -38,20 +38,20 @@ for sub_idx = 3:n_subjects
         data_avg = squeeze(mean(EEG.data, 3));
         n_channels = size(data_avg, 1);
 
-        %% === Criterion 1: Flat channels (low STD) ===
-        channel_std = squeeze(std(data_avg, 0, 2));
-        std_threshold = 75; % µV
-        c1_bad_channels = find(channel_std < std_threshold);
+        %% Criteria 1: Detect flat channels
+        c1_bad_channels = [];
+        % 1st Option -> Using clean_flatlines (default parameters)
+        EEG_clean_flat = clean_flatlines(EEG);
+        c1_bad_labels = setdiff({EEG.chanlocs.labels}, {EEG_clean_flat.chanlocs.labels});
+        c1_bad_channels = find(ismember({EEG.chanlocs.labels}, c1_bad_labels));
+        
 
         %% === Criterion 2: Bad correlation via clean_rawdata (RANSAC) ===
         EEG_event = pop_selectevent(EEG, 'event', 1);
-        % Aplicar clean_rawdata al EEG promedio
-        %[cleaned_sig, removed_chan] = clean_channels(EEG_event);
-        EEG_clean = clean_artifacts(EEG_event);
-        
-        % Identify bad channels based on RANSAC method
-        c2_bad_labels = setdiff({EEG.chanlocs.labels}, {EEG_clean.chanlocs.labels});
-        c2_bad_channels = find(ismember({EEG.chanlocs.labels}, c2_bad_labels));
+        % 1st Option -> Using clean_channels (default parameters) 
+        EEG_clean = clean_channels(EEG_event);
+        c2_bad_labels = setdiff({EEG_event.chanlocs.labels}, {EEG_clean.chanlocs.labels});
+        c2_bad_channels = find(ismember({EEG_event.chanlocs.labels}, c2_bad_labels));
 
         % Detectar canales malos
 
