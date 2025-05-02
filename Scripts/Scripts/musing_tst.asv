@@ -81,7 +81,7 @@ for sub_idx = 1:n_subs
         end
         %z_corrs = (corrs_all - mean(corrs_all)) / std(corrs_all);
         %c2_bad_channels = find(z_corrs < -1.25);  
-        c2_bad_channels = find(corrs_all < 0.75);
+        c2_bad_channels = find(corrs_all < 0.8);
         % Criteria 3 & 4: Spectral Power Outliers
         [pxx, f] = pwelch(data', [], [], [], EEG.srate);
         low_freq_idx = f >= 1 & f <= 10;
@@ -98,7 +98,7 @@ for sub_idx = 1:n_subs
 
         bad_channels = unique([c1_bad_channels(:); c2_bad_channels(:); c3_bad_channels(:); c4_bad_channels(:)]);
         removed_percentage = (length(bad_channels) / n_channels) * 100;
-        if removed_percentage <= 15
+        if removed_percentage <= 25
             usable_songs = usable_songs + 1;
         end
 
@@ -118,9 +118,9 @@ for sub_idx = 1:n_subs
         pct_c4 = 100 * numel(c4_bad_channels) / n_channels;
 
         % Show all results
-        text(0, -0.55, sprintf('Song: %d - Total Removed: %.1f%%', song_idx,removed_percentage), ...
+        text(0, -0.6, sprintf('Song: %d - Total Removed: %.1f%%', song_idx,removed_percentage), ...
             'Color', 'red', 'FontSize', 9, 'HorizontalAlignment', 'center');
-        text(0, -0.75, sprintf('C1: %.1f%% || C2: %.1f%% || C3: %.1f%% || C4: %.1f%%', ...
+        text(0, -0.7, sprintf('C1: %.1f%% || C2: %.1f%% || C3: %.1f%% || C4: %.1f%%', ...
             pct_c1, pct_c2, pct_c3, pct_c4), 'Color', 'k', 'FontSize', 8, ...
             'HorizontalAlignment', 'center');
     
@@ -137,50 +137,48 @@ for sub_idx = 1:n_subs
         end
         title(['Song ' num2str(song_idx)]);
 
-        %C2 vs vecinos
-        n_neighbors = sum(neighbor_matrix, 2);
-        peripheral_threshold = prctile(n_neighbors, 10);
-        peripheral_channels = find(n_neighbors <= peripheral_threshold);
-        peripheral_c2_bad = intersect(c2_bad_channels, peripheral_channels);
-        n_bad = length(peripheral_c2_bad);
-        if mod(n_bad, 2) ~= 0, n_bad = n_bad -1; end
-        peripheral_c2_bad = peripheral_c2_bad(1:n_bad);
-        if ~isempty(peripheral_c2_bad)
-            fig_c2_neighbors = figure('Visible','off','Units','normalized','Position',[1 1 1 1]);
-            set(fig_c2_neighbors, 'Visible', 'off');
-            
-            for i = 1:n_bad
-                ch = peripheral_c2_bad(i);
-                neighbors = find(neighbor_matrix(ch, :) == 1);
-                subplot(n_bad, 1, i); hold on;
+    %C2 vs vecinos
+    n_neighbors = sum(neighbor_matrix, 2);
+    peripheral_threshold = prctile(n_neighbors, 10);
+    peripheral_channels = find(n_neighbors <= peripheral_threshold);
+    peripheral_c2_bad = intersect(c2_bad_channels, peripheral_channels);
+    peripheral_c2_bad = peripheral_c2_bad(1:min(end, 6));
+    if ~isempty(peripheral_c2_bad)
+        fig_c2_neighbors = figure('Visible','off','Units','normalized','Position',[1 1 1 1]);
+        set(fig_c2_neighbors, 'Visible', 'off');
         
-                offset = 0;
-                yticks_vals = [];
-                yticklabels_str = {};
-        
-                % Vecinos (azul)
-                for nb = neighbors
-                    plot(EEG.times, data(nb,:) + offset, 'b');
-                    yticks_vals(end+1) = offset;
-                    yticklabels_str{end+1} = EEG.chanlocs(nb).labels;
-                    offset = offset + 300;
-                end
-        
-                % Canal malo (rojo)
-                plot(EEG.times, data(ch,:) + offset, 'r');
+        for i = 1:length(peripheral_c2_bad)
+            ch = peripheral_c2_bad(i);
+            neighbors = find(neighbor_matrix(ch, :) == 1);
+            subplot(length(peripheral_c2_bad), 1, i); hold on;
+    
+            offset = 0;
+            yticks_vals = [];
+            yticklabels_str = {};
+    
+            % Vecinos (azul)
+            for nb = neighbors
+                plot(EEG.times, data(nb,:) + offset, 'b');
                 yticks_vals(end+1) = offset;
-                yticklabels_str{end+1} = EEG.chanlocs(ch).labels;
-        
-                % Etiquetas
-                set(gca, 'YTick', yticks_vals, 'YTickLabel', yticklabels_str, 'YTickLabelRotation', 0);
-                title(['Channel ' EEG.chanlocs(ch).labels ' (number of neighbours: ' num2str(numel(neighbors)) ')']);
-                xlabel('Time (ms)');
-                ylabel('Channels');
+                yticklabels_str{end+1} = EEG.chanlocs(nb).labels;
+                offset = offset + 300;
             end
-        
-            sgtitle(fig_c2_neighbors, ['C2 check:Time series of a bad channel (red) and its neighbours (blue) - Song ' num2str(song_idx)]);
-            exportgraphics(fig_c2_neighbors, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 300);
+    
+            % Canal malo (rojo)
+            plot(EEG.times, data(ch,:) + offset, 'r');
+            yticks_vals(end+1) = offset;
+            yticklabels_str{end+1} = EEG.chanlocs(ch).labels;
+    
+            % Etiquetas
+            set(gca, 'YTick', yticks_vals, 'YTickLabel', yticklabels_str, 'YTickLabelRotation', 0);
+            title(['Channel ' EEG.chanlocs(ch).labels ' (number of neighbours: ' num2str(numel(neighbors)) ')']);
+            xlabel('Time (ms)');
+            ylabel('Channels');
         end
+    
+        sgtitle(fig_c2_neighbors, ['C2 check:Time series of a bad channel (red) and its neighbours (blue) - Song ' num2str(song_idx)]);
+        exportgraphics(fig_c2_neighbors, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 300);
+    end
 
         
 
