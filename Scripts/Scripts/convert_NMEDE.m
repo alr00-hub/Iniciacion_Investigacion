@@ -2,7 +2,7 @@
 clear; clc;
 
 n_songs = 2; % 1 song but 2 variants
-n_subs = 24; % Number of subjects
+n_subs = 2; % Number of subjects
 n_channels = 129;
 path_to_ds = 'D:\master\GlobusPC\NMED-E'; % Directory of the dataset
 file_base_name = 'RawEEG_S'; % Base name for the subject files
@@ -14,13 +14,14 @@ for sub_idx = 1:n_subs
     display(['Processing subject ' num2str(sub_idx)]);
     % Convert subject number to string
     subject_id = sprintf('%02d', sub_idx);
+    subject_str = sprintf('%03d', sub_idx);
 
     % Load subject data
     mat_file = [file_base_name subject_id '.mat'];
     subject_data = load(fullfile(path_to_ds, mat_file));
 
     % Create separate folder for each subject
-    subject_folder = fullfile(path_to_ds, ['sub-' subject_id]);
+    subject_folder = fullfile(path_to_ds, ['sub-' subject_str]);
     if ~exist(subject_folder, 'dir')
         mkdir(subject_folder);
     end
@@ -35,16 +36,33 @@ for sub_idx = 1:n_subs
     event_latencies = [];
     event_types = {};
 
+    fst_song = 0;
+    for i = 1:length(allTriggers)
+        if allTriggers(i) == 22, fst_song = 1; break; end
+        if allTriggers(i) == 23, fst_song = 2; break; end
+    end
+
     % Loop through songs
     for song_idx = 1:n_songs
         
+        song_str = sprintf('%02d', song_idx);
+
+        song_folder = fullfile(subject_folder, ['song-' song_str]);
+        if ~exist(song_folder, 'dir')
+            mkdir(song_folder);
+        end
+        
+        baseline_start_idx = find(allTriggers == 21);
+        if fst_song == 1, baseline_start_idx = baseline_start_idx(song_idx); end
+        if fst_song == 2, baseline_start_idx = baseline_start_idx(1 + n_songs - song_idx); end
+
         % Get start and end of each song (excluding the ratings)
-        song_start_idx = find(allTriggers == 21);
-        song_start_idx = song_start_idx(song_idx);
+        song_start_idx = find(allTriggers == 21 + song_idx);
+        %song_start_idx = song_start_idx(song_idx);
         song_end_idx = find(allTriggers == (11 + song_idx));
         
         % Find the onset times for baseline and ratings trial
-        precise_onset_arr = find(allTriggers == 128 & allOnsets > allOnsets(song_start_idx));
+        precise_onset_arr = find(allTriggers == 128 & allOnsets < allOnsets(song_end_idx) & allOnsets > allOnsets(baseline_start_idx));
         precise_onset_baseline = allOnsets(precise_onset_arr(1)) - 1000; % Baseline trial onset (with offset)
         precise_onset_song = allOnsets(precise_onset_arr(2)) - 1000;     % Song trial onset (with offset)
         
@@ -85,8 +103,8 @@ for sub_idx = 1:n_subs
         EEG = eeg_checkset(EEG);  % Ensure EEG is valid
         
         % Save the EEG data for the specific song and segment
-        output_filename = ['sub-' subject_id '_song_' num2str(song_idx) '.set'];
-        pop_saveset(EEG, 'filename', output_filename, 'filepath', subject_folder); % Save .set file
+        output_filename = ['sub-' subject_str '_song-' song_str '.set'];
+        pop_saveset(EEG, 'filename', output_filename, 'filepath', song_folder); % Save .set file
         
         % Clear event latencies and event types for the next song
         event_latencies = [];

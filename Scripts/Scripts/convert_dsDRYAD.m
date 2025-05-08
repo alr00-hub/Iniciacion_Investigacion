@@ -14,13 +14,14 @@ for sub_idx = 1:n_subs
     display(['Processing subject ' num2str(sub_idx)]);
     % Convert subject number to string
     subject_id = sprintf('%d', sub_idx);
+    subject_str = sprintf('%03d', sub_idx);
 
     % Load subject data
     mat_file = [file_base_name subject_id '.mat'];
     subject_data = load(fullfile(path_to_ds, mat_file));
 
     % Create separate folder for each subject
-    subject_folder = fullfile(path_to_ds, ['sub-' subject_id]);
+    subject_folder = fullfile(path_to_ds, ['sub-' subject_str]);
     if ~exist(subject_folder, 'dir')
         mkdir(subject_folder);
     end
@@ -35,8 +36,9 @@ for sub_idx = 1:n_subs
     %% Save 3 trials per song as epochs in a single .set file
     for song_idx = 1:n_songs
         
+        song_str = sprintf('%02d', song_idx);
         % Create folder for each song
-        song_folder = fullfile(subject_folder, ['song-' num2str(song_idx, '%02d')]);
+        song_folder = fullfile(subject_folder, ['song-' song_str]);
         if ~exist(song_folder, 'dir')
             mkdir(song_folder);
         end

@@ -48,9 +48,10 @@ for sub_idx = 1:n_subs
 
         % Asegurarse de que la estructura EEG sea válida
         song_EEG = eeg_checkset(song_EEG);
-
+        
+        converted_filepath = fullfile(path_to_ds, subject_str);
         % Crear la carpeta para guardar el archivo
-        song_folder = fullfile(filepath, ['song-' num2str(song_idx, '%02d')]);
+        song_folder = fullfile(converted_filepath, ['song-' num2str(song_idx, '%02d')]);
         if ~exist(song_folder, 'dir')
             mkdir(song_folder);
         end
