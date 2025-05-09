@@ -53,7 +53,7 @@ classdef DatasetQualityAssessor
             subject_str = [sub_base num2str(sub_idx, '%03d')];
             song_str = [song_base num2str(song_idx, '%02d')];
             filename = [subject_str '_' song_str '.set'];
-            filepath = [path_to_ds '\' subject_str '\eeg\' song_str];
+            filepath = [path_to_ds '\' subject_str '\' song_str];
             EEG = pop_loadset('filename', filename, 'filepath', filepath);
 
             % Downsample to 256 

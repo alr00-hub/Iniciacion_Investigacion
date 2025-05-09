@@ -1,4 +1,4 @@
-%% Script for dsDRYAD - Aggregate 3 Trials per Song as Epochs with Events
+%% Script for dsDRYAD conversion - Aggregate 3 Trials per Song as Epochs with Events
 
 %% Basic Setup
 clear; clc;
@@ -96,7 +96,7 @@ for sub_idx = 1:n_subs
         %% Check EEG structure and save
         
         EEG = eeg_checkset(EEG);  % Ensure EEG is valid
-        output_filename = ['sub-' subject_id '_song-' num2str(song_idx) '.set'];
+        output_filename = ['sub-' subject_str '_song-' song_str '.set'];
         pop_saveset(EEG, 'filename', output_filename, 'filepath', song_folder); % Save .set file
 
     end
