@@ -1,9 +1,9 @@
 %% Script to assess quality of DRYAD dataset
 clear; clc;
-ds_name = 'dsAUTh';
-n_songs = 30;
-n_subs = 1;
-path_to_ds = 'D:\master\Iniciacion_Investigacion\Datasets\dsARISTOTLE';
+ds_name = 'testing';
+n_songs = 2;
+n_subs = 7;
+path_to_ds = 'D:\master\Iniciacion_Investigacion\Datasets\ds003774\sourcedata';
 sub_base_name = 'sub-';
 song_base_name = 'song-';
 export = true;

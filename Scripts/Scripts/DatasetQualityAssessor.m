@@ -6,7 +6,7 @@ classdef DatasetQualityAssessor
             usable_songs_per_subject = zeros(n_subs, 1);
             
             % Loop over subjects
-            for sub_idx = 1:n_subs
+            for sub_idx = 7:n_subs
                 disp(['Processing subject ' num2str(sub_idx)]);
                 usable_songs = 0;
 
@@ -22,7 +22,7 @@ classdef DatasetQualityAssessor
                     EEG = DatasetQualityAssessor.load_and_preprocess(path_to_ds, sub_base_name, song_base_name, sub_idx, song_idx);
                     [neighbor_matrix, data] = DatasetQualityAssessor.compute_neighbors(EEG);
                     [c1, c2, corrs] = DatasetQualityAssessor.criteria_flat_and_corr(EEG, data, neighbor_matrix);
-                    [c3, c4, low_band, high_band] = DatasetQualityAssessor.criteria_power(EEG, data);
+                    [c3, c4, low_band, high_band, c3_total_bad_windows, c4_total_bad_windows] = DatasetQualityAssessor.criteria_power(EEG, data);
                     bad_channels = unique([c1(:); c2(:); c3(:); c4(:)]);
                     removed_percentage = 100 * numel(bad_channels) / size(EEG.data,1);
 
@@ -33,7 +33,7 @@ classdef DatasetQualityAssessor
                     % Create figures if flag
                     if export
                         DatasetQualityAssessor.create_figures(ds_name, sub_idx, song_idx, EEG, data, removed_percentage, ...
-                            corrs, neighbor_matrix, c1, c2, c3, c4, bad_channels, low_band, high_band, figs);
+                            corrs, neighbor_matrix, c1, c2, c3, c4, bad_channels, low_band, high_band, c3_total_bad_windows, c4_total_bad_windows, figs);
                     end
                 end
 
@@ -88,33 +88,82 @@ classdef DatasetQualityAssessor
             data = squeeze(mean(EEG.data, 3)); % If the ds has only 1 epoch it returns the original data
         end
 
-        function [c1, c2, corrs] = criteria_flat_and_corr(EEG, data, neighbor_matrix)
+       function [c1, c2, corrs] = criteria_flat_and_corr(EEG, data, neighbor_matrix)
             EEG_clean_flat = clean_flatlines(EEG); % Using default clean_flatlines
             c1 = find(~ismember({EEG.chanlocs.labels}, {EEG_clean_flat.chanlocs.labels}));
+            EEG.data = squeeze(mean(EEG.data, 3)); % Note to change this later
+            EEG_clean = clean_channels(EEG);
+            c2_bad_labels = setdiff({EEG.chanlocs.labels}, {EEG_clean.chanlocs.labels});
+            c2 = find(ismember({EEG.chanlocs.labels}, c2_bad_labels));
+            corrs = NaN;
+            % % Set variables
+            % n_channels = size(data,1);
+            % n_samples = size(data,2);
+            % 
+            % % Sliding window: size 20% of samples, step 50%
+            % win_len = floor(0.2 * n_samples);
+            % step = floor(0.5 * win_len);
+            % n_windows = floor((n_samples - win_len) / step) + 1;
+            % 
+            % corrs = zeros(n_channels, 1);
+            % for ch = 1:n_channels
+            %     neighbors = find(neighbor_matrix(ch, :));
+            %     corr_vals = zeros(n_windows, 1);
+            %     for w = 1:n_windows
+            %         idx = (w-1)*step + (1:win_len);
+            %         seg_ch = data(ch, idx)';
+            %         seg_neighbors = median(data(neighbors, idx), 1)';
+            %         corr_vals(w) = corr(seg_ch, seg_neighbors);
+            %     end
+            % 
+            %     corrs(ch) = median(corr_vals);
+            % end
+            % 
+            % c2 = find(corrs < 0.75); 
+        end
 
-            % Set variables
-            n_channels = size(data,1);
-            corrs = zeros(n_channels,1);
-            for ch = 1:n_channels
-                neighbors = find(neighbor_matrix(ch, :));
-                neighbor_median = median(data(neighbors, :), 1); % Median of all neighbors
-                corrs(ch) = corr(data(ch, :)', neighbor_median'); % Correlation with that median
+        function [c3, c4, low_band, high_band, c3_total_bad_windows, c4_total_bad_windows] = criteria_power(EEG, data)
+        
+            % Define number of windows and their length
+            n_channels = size(data, 1);
+            n_samples = size(data, 2);
+            win_len = EEG.srate; % 1 second
+            n_windows = floor(n_samples/win_len);
+
+            low_band = zeros(n_windows, n_channels);
+            high_band = zeros(n_windows, n_channels);
+            for w = 1:n_windows
+                idx = win_len * (w-1) + (1:win_len-1);
+                % Sanity check. This should not happen for our ds
+                
+                if idx(end) > n_samples, break; end
+                seg = data(:, idx);
+                [pxx, f] = pwelch(seg', [], [], [], EEG.srate);
+                pxx_db = 10 * log10(pxx); % to dB
+                low_idx = f >= 1 & f <= 10;
+                high_idx = f >= 65 & f <= 90;
+                low_band(w, :) = mean(pxx_db(low_idx, :), 1);
+                high_band(w, :) = mean(pxx_db(high_idx, :), 1);
             end
-            c2 = find(corrs < 0.75); % If corr < 0.75 then labeled as bad
+        
+            % Detect outliers based on median power
+            detect_outliers = @(x, w) find(x < quantile(x, 0.25) - w * iqr(x) | ...
+                                            x > quantile(x, 0.75) + w * iqr(x));
+            w = 2;
+            threshold_percentage = 0.1;
+            [~, c3_chan_idx] = detect_outliers(low_band, w);
+            [~, c4_chan_idx] = detect_outliers(high_band, w);
+            c3_win_outlier_per_chan = accumarray(c3_chan_idx, 1, [n_channels, 1]);
+            c4_win_outlier_per_chan = accumarray(c4_chan_idx, 1, [n_channels, 1]);
+            c3 = find((c3_win_outlier_per_chan/n_windows) > threshold_percentage);
+            c4 = find((c4_win_outlier_per_chan/n_windows) > threshold_percentage);
+            c3_total_bad_windows = sum(c3_win_outlier_per_chan);
+            c4_total_bad_windows = sum(c4_win_outlier_per_chan);
+            
+
         end
 
-        function [c3, c4, low_band, high_band] = criteria_power(EEG, data)
-            % Compute FFT using Welch's method
-            [pxx, f] = pwelch(data', [], [], [], EEG.srate);
-            low_idx = f >= 1 & f <= 10; % low_freq band threshold
-            high_idx = f >= 65 & f <= 90; % high_freq band threshold
-            low_band = mean(pxx(low_idx, :), 1);
-            high_band = mean(pxx(high_idx, :), 1);
-            detect_outliers = @(x, w) find(x < quantile(x, 0.25) - w * iqr(x) | x > quantile(x, 0.75) + w * iqr(x));
-            w = 3;
-            c3 = detect_outliers(low_band, w); % low freq outlier
-            c4 = detect_outliers(high_band, w);% high freq outlier
-        end
+
 
         function export_title_page(ds_name, sub_idx)
             % Export figures as png with high resolution to pdf
@@ -138,9 +187,9 @@ classdef DatasetQualityAssessor
         end
 
         function create_figures(ds_name, sub_idx, song_idx, EEG, data, removed_pct, corrs, neighbor_matrix, ...
-                c1, c2, c3, c4, bad, low_band, high_band, figs)
+                c1, c2, c3, c4, bad, low_band, high_band, c3_total_bad_windows, c4_total_bad_windows, figs)
             % Create figures with subplots for each criteria
-            filename_pdf = [ds_name '_Subject_' num2str(sub_idx, '%03d') '_QualityReport.pdf'];
+            %filename_pdf = [ds_name '_Subject_' num2str(sub_idx, '%03d') '_QualityReport.pdf'];
             n_channels = size(data,1);
             set(0, 'CurrentFigure', figs.topos);
             subplot(4, 3, song_idx);
@@ -153,26 +202,102 @@ classdef DatasetQualityAssessor
                 'Color', 'k', 'FontSize', 8, 'HorizontalAlignment', 'center');
 
             set(0, 'CurrentFigure', figs.c1c2);
-            subplot(12,1,song_idx); hold on;
-            for ch = c1, plot(EEG.times, data(ch,:), 'b'); end
-            for ch = c2, plot(EEG.times, data(ch,:), 'r'); end
-            title(['Song ' num2str(song_idx)]);
+            subplot(4,3,song_idx); hold on;
+            mid = floor(length(EEG.times)/2);
+            srate = EEG.srate;
+            win = round(srate); % 1 second
+            idx = mid - floor(win/2) : mid + floor(win/2);
+            normalize = @(x) (x - mean(x)) ./ std(x);
+            offset = 0; ytick_vals = []; ytick_labels = {};
+            for ch = c1
+                plot(EEG.times(idx), normalize(data(ch, idx)) + offset, 'b');
+                ytick_vals(end+1) = offset;
+                ytick_labels{end+1} = EEG.chanlocs(ch).labels;
+                offset = offset + 3;
+            end
+            for ch = c2
+                plot(EEG.times(idx), normalize(data(ch, idx)) + offset, 'r');
+                ytick_vals(end+1) = offset;
+                ytick_labels{end+1} = EEG.chanlocs(ch).labels;
+                offset = offset + 3;
+            end
+            set(gca, 'YTick', ytick_vals, 'YTickLabel', ytick_labels);
+            xlabel('Time (ms)');
+            ylabel('Channels (Normalized)');
+            title(['Song ' num2str(song_idx) ' - 1s centered']);
+ 
+            
+            set(0, 'CurrentFigure', figs.c3);
+        
+            % Create subplot
+            subplot(4, 3, song_idx);
+            boxplot(low_band, 'Widths', 0.9, 'OutlierSize', 2, 'Whisker', 2);
+        
+            title(['Song ' num2str(song_idx) ' - Bad 1s windows (counting all channels): ' num2str(c3_total_bad_windows)]);
+            xlabel('Channel');
+            ylabel('PSD (dB)');
+        
+            % Rotate X tick labels to avoid overlap
+            ax = gca;
+            ax.XTickLabelRotation = 90;
+            ax.FontSize = 2.5;
 
+            % Get handles to all boxes
+            h = findobj(gca, 'Tag', 'Box');
+            numBoxes = length(h);
+
+            % Define a colormap 
+            cmap = turbo(numBoxes);
+        
+            % Apply
+            for k = 1:numBoxes
+                patch(get(h(k), 'XData'), get(h(k), 'YData'), ...
+                    cmap(k, :), 'FaceAlpha', 0.6, 'EdgeColor', 'black');
+            end
             if ~isempty(c3)
-                set(0, 'CurrentFigure', figs.c3);
-                subplot(4,3,song_idx); bar(low_band, 'FaceColor', 'white'); hold on;
-                scatter(c3, low_band(c3), 10, 'red', 'filled');
-                title(['Song ' num2str(song_idx)]);
+                % Modify X tick labels, labeling as bad those in c3
+                new_labels = string(ax.XTickLabel); 
+                new_labels(c3) = "(bad) " + new_labels(c3);
+            
+                ax.XTickLabel = cellstr(new_labels);
+            end
+
+            
+            set(0, 'CurrentFigure', figs.c4);
+            subplot(4,3,song_idx);
+            boxplot(high_band, 'Widths', 0.9, 'OutlierSize', 2, 'Whisker', 2);
+        
+            title(['Song ' num2str(song_idx) ' - Bad 1s windows (counting all channels): ' num2str(c4_total_bad_windows)]);
+            xlabel('Channel');
+            ylabel('PSD (dB)');
+        
+            % Rotate X tick labels to avoid overlap
+            ax = gca;
+            ax.XTickLabelRotation = 90;
+            ax.FontSize = 2.5;
+            % Get handles to all boxes
+            h = findobj(gca, 'Tag', 'Box');
+            numBoxes = length(h);
+
+            % Define a colormap
+            cmap = turbo(numBoxes);
+        
+            % Apply
+            for k = 1:numBoxes
+                patch(get(h(k), 'XData'), get(h(k), 'YData'), ...
+                    cmap(k, :), 'FaceAlpha', 0.6, 'EdgeColor', 'black');
             end
 
             if ~isempty(c4)
-                set(0, 'CurrentFigure', figs.c4);
-                subplot(4,3,song_idx); bar(high_band, 'FaceColor', 'white'); hold on;
-                scatter(c4, high_band(c4), 10, 'red', 'filled');
-                title(['Song ' num2str(song_idx)]);
+                % Modify X tick labels, labeling as bad those in c4
+                new_labels = string(ax.XTickLabel); 
+                new_labels(c4) = "(bad) " + new_labels(c4);
+                ax.XTickLabel = cellstr(new_labels);
+
             end
 
-            DatasetQualityAssessor.plot_c2_neighbors(song_idx, EEG, data, corrs, neighbor_matrix, c2, filename_pdf);
+
+            %DatasetQualityAssessor.plot_c2_neighbors(song_idx, EEG, data, corrs, neighbor_matrix, c2, filename_pdf);
         end
 
         function plot_c2_neighbors(song_idx, EEG, data, corrs, neighbor_matrix, c2_bad_channels, filename_pdf)
@@ -192,22 +317,30 @@ classdef DatasetQualityAssessor
             n = min(6, length(channels));
             if n == 0, return; end
             fig = figure('Visible','off','Units','normalized','Position',[1 1 1 1]);
+            mid = floor(length(EEG.times)/2);
+            srate = EEG.srate;
+            win = round(srate); % 1 second
+            idx = mid - floor(win/2) : mid + floor(win/2);
+            
+            % Normalize window for better signal contrast in plot
+            normalize = @(x) (x - mean(x)) ./ std(x); 
+
             for i = 1:n
                 ch = channels(i);
                 neighbors = find(neighbor_matrix(ch, :));
                 subplot(n,1,i); hold on;
                 offset = 0; ytick_vals = []; ytick_labels = {};
                 for nb = neighbors
-                    plot(EEG.times, data(nb,:) + offset, 'b'); % Paint it blue
+                    plot(EEG.times(idx), normalize(data(nb,idx)) + offset, 'b'); % Paint it blue
                     ytick_vals(end+1) = offset;
                     ytick_labels{end+1} = EEG.chanlocs(nb).labels;
-                    offset = offset + 1000;
+                    offset = offset + 3; % Small offset because data is normalized
                 end
                 switch upper(type) 
                     case 'GOOD'
-                        plot(EEG.times, data(ch,:) + offset, 'g'); % Paint it green
+                        plot(EEG.times(idx), normalize(data(ch,idx)) + offset, 'g'); % Paint it green
                     case 'BAD'
-                        plot(EEG.times, data(ch,:) + offset, 'r'); % Paint it red
+                        plot(EEG.times(idx), normalize(data(ch,idx)) + offset, 'r'); % Paint it red
                 end
                 ytick_vals(end+1) = offset;
                 ytick_labels{end+1} = EEG.chanlocs(ch).labels;
@@ -229,8 +362,8 @@ classdef DatasetQualityAssessor
             sgtitle(figs.c4, 'C4 check: High Power Outlier (65 Hz - 90 Hz)');
             exportgraphics(figs.topos, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 300);
             exportgraphics(figs.c1c2, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 300);
-            exportgraphics(figs.c3, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 300);
-            exportgraphics(figs.c4, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 300);
+            exportgraphics(figs.c3, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 600);
+            exportgraphics(figs.c4, filename_pdf, 'Append', true, 'ContentType', 'image', 'Resolution', 600);
             close(figs.topos); close(figs.c1c2); close(figs.c3); close(figs.c4);
         end
 
