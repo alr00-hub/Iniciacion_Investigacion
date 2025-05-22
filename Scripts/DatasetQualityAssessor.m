@@ -1,3 +1,4 @@
+%% DatasetQualityAssessor.m
 classdef DatasetQualityAssessor
     methods(Static)
         function run(ds_name, n_songs, n_subs, path_to_ds, sub_base_name, song_base_name, subplot_sizes, export)
@@ -123,7 +124,7 @@ classdef DatasetQualityAssessor
             c1_bad_channels = find(~ismember({EEG.chanlocs.labels}, {EEG_clean_flat.chanlocs.labels}));
             EEG.data = squeeze(mean(EEG.data, 3)); % If the ds has only 1 epoch it returns the original data
             %data = EEG.data;
-            EEG_clean = clean_channels_nolocs(EEG);
+            EEG_clean = clean_channels(EEG);
             c2_bad_labels = setdiff({EEG.chanlocs.labels}, {EEG_clean.chanlocs.labels});
             c2_bad_channels = find(ismember({EEG.chanlocs.labels}, c2_bad_labels));
             corrs = NaN; % For now, we don't use this variable
@@ -235,7 +236,7 @@ classdef DatasetQualityAssessor
 
         function figs = init_figures()
             % Set figures
-            f = @(tag) figure('Visible','on','Units','normalized','Position',[1 1 1 1], 'Tag', tag);
+            f = @(tag) figure('Visible','off','Units','normalized','Position',[1 1 1 1], 'Tag', tag);
             figs.topos = f('topos');
             figs.c1c2 = f('c1c2');
             figs.c3_bad_channels = f('c3_bad_channels');
